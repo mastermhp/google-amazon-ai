@@ -1,4 +1,3 @@
-// import ContentGenerator from "@/components/content-generator"
 import { getPromptTemplatesAction } from "@/lib/actions"
 import ContentGenerator from "../components/content-generator"
 
@@ -7,7 +6,9 @@ export default async function GoogleContentPage() {
   let error = null
 
   try {
-    promptTemplates = await getPromptTemplatesAction()
+    // Fetch the templates and ensure they're serialized
+    const templates = await getPromptTemplatesAction()
+    promptTemplates = templates
   } catch (err) {
     console.error("Error loading prompt templates:", err)
     error = err.message
