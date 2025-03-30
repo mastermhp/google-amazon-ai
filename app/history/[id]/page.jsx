@@ -68,17 +68,27 @@ export default function ContentDetailPage() {
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
       .replace(/\*(.+?)\*/g, "<em>$1</em>")
 
+    // Make sure we have images to insert
     if (images && images.length > 0) {
-      images.forEach((image, index) => {
-        const placeholder = `[IMAGE${index + 1}]`
+      // Process each image placeholder
+      for (let i = 0; i < images.length; i++) {
+        const image = images[i]
+        const placeholder = `[IMAGE${i + 1}]`
+
+        // Create image HTML with higher quality
         const imageHtml = `
           <figure class="my-4">
-            <img src="${image.thumbnail}" alt="${image.title}" class="w-full h-auto rounded-lg shadow-md" />
+            <img src="${image.link}" alt="${image.title}" class="w-full h-auto rounded-lg shadow-md" onerror="this.src='${image.thumbnail}'; this.onerror=null;" />
             <figcaption class="text-sm text-gray-500 mt-2">${image.title}</figcaption>
           </figure>
         `
-        renderedContent = renderedContent.replace(placeholder, imageHtml)
-      })
+
+        // Split and join to avoid regex replacement issues
+        const parts = renderedContent.split(placeholder)
+        if (parts.length > 1) {
+          renderedContent = parts.join(imageHtml)
+        }
+      }
     }
 
     return renderedContent
