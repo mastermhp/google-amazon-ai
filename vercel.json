@@ -1,0 +1,21 @@
+{
+    "functions": {
+      "app/api/**/*": {
+        "memory": 1024,
+        "maxDuration": 10
+      }
+    },
+    "headers": [
+      {
+        "source": "/api/(.*)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-store, max-age=0"
+          }
+        ]
+      }
+    ]
+  }
+  
+  

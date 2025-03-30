@@ -611,6 +611,21 @@
 
 
 
+// "use client"
+// import React, { useState, useEffect } from "react"
+// import { Loader2, FileText, Edit, Check, Copy, Download } from "lucide-react"
+// import SeoMetrics from "./seo-metrics"
+// import ReactMarkdown from "react-markdown"
+// import { saveAmazonReviewAction, getAmazonPromptTemplatesAction } from "@/lib/actions"
+// import { useRouter } from "next/navigation"
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+// import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+// import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+// import { Badge } from "@/components/ui/badge"
+// import Link from "next/link"
+// import { Button } from "@/components/ui/button"
+
+
 "use client"
 import React, { useState, useEffect } from "react"
 import { Loader2, FileText, Edit, Check, Copy, Download } from "lucide-react"
@@ -624,6 +639,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+
 
 export default function AmazonContentGenerator({ products }) {
   const router = useRouter()
@@ -671,10 +687,12 @@ export default function AmazonContentGenerator({ products }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          products,
+          products: products.slice(0, 5), // Limit to 5 products to reduce payload size
           keywords,
           promptTemplateId: promptTemplateId !== "default" ? promptTemplateId : undefined,
         }),
+        // Add timeout
+        signal: AbortSignal.timeout(10000), // 10 second timeout
       })
 
       if (!response.ok) {
@@ -684,58 +702,70 @@ export default function AmazonContentGenerator({ products }) {
 
       const data = await response.json()
 
-      // Add image placeholders to the content
-      let contentWithImages = data.content
+      // Check if we got fallback content due to timeout
+      if (data.error && data.fallbackContent) {
+        setContent(data.fallbackContent.content)
+        setEditableContent(data.fallbackContent.content)
+        setSeoMetrics(data.fallbackContent.seoMetrics)
 
-      // Add product image placeholders at appropriate positions in the content
-      products.forEach((product, index) => {
-        // Find a good position to insert the image - after product mentions or at section breaks
-        const productNameMention = new RegExp(`(${product.title.split(" ").slice(0, 3).join("\\s+")})`, "i")
-        const sectionBreak = /\n## /g
+        // Show a warning to the user
+        alert(
+          "The content generation took too long. We've provided simplified content instead. You can edit it as needed.",
+        )
+      } else {
+        // Add image placeholders to the content
+        let contentWithImages = data.content
 
-        // Try to find the product name in the content
-        const matches = contentWithImages.match(productNameMention)
+        // Add product image placeholders at appropriate positions in the content
+        products.slice(0, 5).forEach((product, index) => {
+          // Find a good position to insert the image - after product mentions or at section breaks
+          const productNameMention = new RegExp(`(${product.title.split(" ").slice(0, 3).join("\\s+")})`, "i")
+          const sectionBreak = /\n## /g
 
-        if (matches && matches.index) {
-          // Find the end of the paragraph where the product is mentioned
-          const paragraphEnd = contentWithImages.indexOf("\n\n", matches.index)
-          if (paragraphEnd !== -1) {
-            // Insert image placeholder after the paragraph
-            const imagePlaceholder = `\n\n[PRODUCT_IMAGE${index + 1}]\n\n`
-            contentWithImages =
-              contentWithImages.substring(0, paragraphEnd) +
-              imagePlaceholder +
-              contentWithImages.substring(paragraphEnd)
-          }
-        } else {
-          // If product name not found, insert after a section break
-          const sections = contentWithImages.split(sectionBreak)
-          if (sections.length > index + 1) {
-            // Insert after a section heading
-            const position = contentWithImages.indexOf(sections[index + 1]) + sections[index + 1].indexOf("\n\n")
-            if (position !== -1) {
+          // Try to find the product name in the content
+          const matches = contentWithImages.match(productNameMention)
+
+          if (matches && matches.index) {
+            // Find the end of the paragraph where the product is mentioned
+            const paragraphEnd = contentWithImages.indexOf("\n\n", matches.index)
+            if (paragraphEnd !== -1) {
+              // Insert image placeholder after the paragraph
               const imagePlaceholder = `\n\n[PRODUCT_IMAGE${index + 1}]\n\n`
               contentWithImages =
-                contentWithImages.substring(0, position) + imagePlaceholder + contentWithImages.substring(position)
+                contentWithImages.substring(0, paragraphEnd) +
+                imagePlaceholder +
+                contentWithImages.substring(paragraphEnd)
+            }
+          } else {
+            // If product name not found, insert after a section break
+            const sections = contentWithImages.split(sectionBreak)
+            if (sections.length > index + 1) {
+              // Insert after a section heading
+              const position = contentWithImages.indexOf(sections[index + 1]) + sections[index + 1].indexOf("\n\n")
+              if (position !== -1) {
+                const imagePlaceholder = `\n\n[PRODUCT_IMAGE${index + 1}]\n\n`
+                contentWithImages =
+                  contentWithImages.substring(0, position) + imagePlaceholder + contentWithImages.substring(position)
+              }
             }
           }
-        }
-      })
+        })
 
-      setContent(contentWithImages)
-      setEditableContent(contentWithImages)
-      setSeoMetrics(data.seoMetrics)
+        setContent(contentWithImages)
+        setEditableContent(contentWithImages)
+        setSeoMetrics(data.seoMetrics)
+      }
 
       // Save to MongoDB
-      const titleMatch = contentWithImages.match(/^# (.+)$/m)
+      const titleMatch = content.match(/^# (.+)$/m)
       const title = titleMatch ? titleMatch[1] : `Amazon Product Review`
 
       await saveAmazonReviewAction({
         title,
-        content: contentWithImages,
-        products,
+        content: content,
+        products: products.slice(0, 5), // Limit to 5 products
         keywords: keywords || "best products, product comparison, product review",
-        seoMetrics: data.seoMetrics,
+        seoMetrics: seoMetrics,
         promptTemplateId: promptTemplateId !== "default" ? promptTemplateId : undefined,
       })
 
@@ -743,7 +773,7 @@ export default function AmazonContentGenerator({ products }) {
       router.refresh()
     } catch (error) {
       console.error("Error generating content:", error)
-      alert(`Error: ${error.message}`)
+      alert(`Error: ${error.message}. Please try again with fewer products or a simpler request.`)
     } finally {
       setIsGenerating(false)
     }
@@ -1008,4 +1038,6 @@ export default function AmazonContentGenerator({ products }) {
     </div>
   )
 }
+
+
 
