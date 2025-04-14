@@ -138,10 +138,10 @@ export function FuturisticFooter() {
               transition={{ duration: 0.5 }}
             >
               <div className="rounded-full bg-primary p-2 shadow-lg shadow-primary/50">
-                <AnimatedIcon icon={Sparkles} className="h-6 w-6 text-white" animation="pulse" />
+                <AnimatedIcon icon={Sparkles} className="h-6 w-6 text-[#542180]" animation="pulse" />
               </div>
               <span className="text-2xl font-bold">
-                <span className="text-primary">AI</span>
+                <span className="text-[#542180]">AI</span>
                 <span className="text-white">Content</span>
               </span>
             </motion.div>
