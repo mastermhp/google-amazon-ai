@@ -1475,7 +1475,7 @@ Price: ${p.price}
                     {copySuccess ? (
                       <>
                         <Check className="mr-2 h-4 w-4" />
-                        Copied!
+                        Copied!!
                       </>
                     ) : (
                       <>
